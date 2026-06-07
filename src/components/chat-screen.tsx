@@ -5,6 +5,14 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { TONE_LEVELS, type ToneLevel } from "@/lib/albur-prompt";
 import { ChileIcon } from "@/components/chile-icon";
+import { SiteFooter } from "@/components/site-footer";
+import { useMessageLimit } from "@/lib/use-message-limit";
+
+function formatCountdown(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
 
 export function ChatScreen({
   tone,
@@ -15,6 +23,7 @@ export function ChatScreen({
 }) {
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const { remaining, isLimited, resetInSeconds, recordMessage, limit } = useMessageLimit();
 
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
@@ -33,8 +42,9 @@ export function ChatScreen({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const text = input.trim();
-    if (!text || isBusy) return;
+    if (!text || isBusy || isLimited) return;
     sendMessage({ text });
+    recordMessage();
     setInput("");
   }
 
@@ -47,7 +57,9 @@ export function ChatScreen({
           </div>
           <div>
             <div className="font-medium">AlburAI</div>
-            <div className="text-xs text-white/80">Tono: {toneLabel}</div>
+            <div className="text-xs text-white/80">
+              Tono: {toneLabel} · {remaining}/{limit} mensajes restantes
+            </div>
           </div>
         </div>
         <button
@@ -97,6 +109,13 @@ export function ChatScreen({
         </div>
       </div>
 
+      {isLimited && (
+        <div className="bg-[#fef3c7] px-4 py-2 text-center text-xs text-[#92400e] dark:bg-[#3f3520] dark:text-[#fcd34d]">
+          Llegaste al límite de {limit} mensajes por sesión. Puedes seguir
+          alburendo en {formatCountdown(resetInSeconds)} min.
+        </div>
+      )}
+
       <form
         onSubmit={handleSubmit}
         className="flex items-center gap-2 bg-[#f0f2f5] px-4 py-3 dark:bg-[#202c33]"
@@ -104,19 +123,21 @@ export function ChatScreen({
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Escribe un mensaje…"
-          disabled={isBusy}
+          placeholder={isLimited ? "Límite alcanzado…" : "Escribe un mensaje…"}
+          disabled={isBusy || isLimited}
           className="flex-1 rounded-full border-none bg-white px-4 py-2.5 text-sm text-[#111b21] outline-none placeholder:text-[#667781] disabled:opacity-60 dark:bg-[#2a3942] dark:text-[#e9edef] dark:placeholder:text-[#8696a0]"
         />
         <button
           type="submit"
-          disabled={isBusy || !input.trim()}
+          disabled={isBusy || isLimited || !input.trim()}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-[#00a884] text-white transition-colors hover:bg-[#06997a] disabled:opacity-50"
           aria-label="Enviar mensaje"
         >
           ➤
         </button>
       </form>
+
+      <SiteFooter />
     </div>
   );
 }

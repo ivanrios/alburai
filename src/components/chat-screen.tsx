@@ -6,6 +6,7 @@ import { DefaultChatTransport } from "ai";
 import { TONE_LEVELS, type ToneLevel } from "@/lib/albur-prompt";
 import { ChileIcon } from "@/components/chile-icon";
 import { SiteFooter } from "@/components/site-footer";
+import { ToneSlider } from "@/components/tone-slider";
 import { useMessageLimit } from "@/lib/use-message-limit";
 
 function formatCountdown(totalSeconds: number) {
@@ -14,22 +15,14 @@ function formatCountdown(totalSeconds: number) {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
-export function ChatScreen({
-  tone,
-  onChangeTone,
-}: {
-  tone: ToneLevel;
-  onChangeTone: () => void;
-}) {
+export function ChatScreen() {
+  const [tone, setTone] = useState<ToneLevel>("picante");
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const { remaining, isLimited, resetInSeconds, recordMessage, limit } = useMessageLimit();
 
   const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
-      body: { tone },
-    }),
+    transport: new DefaultChatTransport({ api: "/api/chat" }),
   });
 
   const toneLabel = TONE_LEVELS.find((t) => t.id === tone)?.label ?? tone;
@@ -43,7 +36,7 @@ export function ChatScreen({
     e.preventDefault();
     const text = input.trim();
     if (!text || isBusy || isLimited) return;
-    sendMessage({ text });
+    sendMessage({ text }, { body: { tone } });
     recordMessage();
     setInput("");
   }
@@ -58,17 +51,11 @@ export function ChatScreen({
           <div>
             <div className="font-medium">AlburAI</div>
             <div className="text-xs text-white/80">
-              Tono: {toneLabel} · {remaining}/{limit} mensajes restantes
+              {remaining}/{limit} mensajes restantes
             </div>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onChangeTone}
-          className="rounded-full border border-white/40 px-3 py-1.5 text-sm transition-colors hover:bg-white/10"
-        >
-          Cambiar tono
-        </button>
+        <ToneSlider tone={tone} onChange={setTone} />
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-10">
